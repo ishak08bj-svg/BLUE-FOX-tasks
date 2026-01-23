@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>To-Do Pro</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:Segoe UI,Tahoma;
+  min-height:100vh;
+  background:linear-gradient(135deg,#0f2027,#203a43);
+  color:#fff;
+  display:flex;
+  justify-content:center;
+  padding:40px 20px;
+  transition:.3s;
+}
+.container{
+  width:100%;
+  max-width:900px;
+  background:rgba(255,255,255,.06);
+  backdrop-filter:blur(15px);
+  border-radius:25px;
+  padding:25px;
+  box-shadow:0 20px 50px rgba(0,0,0,.5);
+}
+h2{text-align:center;margin-bottom:15px}
+input,select{
+  width:100%;
+  padding:10px;
+  border:none;
+  border-radius:12px;
+  margin-bottom:10px;
+}
+button{
+  width:100%;
+  padding:12px;
+  border:none;
+  border-radius:15px;
+  font-weight:bold;
+  cursor:pointer;
+  background:linear-gradient(90deg,#00c6ff,#0072ff);
+  color:#fff;
+}
+.task{
+  background:rgba(255,255,255,.12);
+  border-radius:15px;
+  padding:12px;
+  margin-top:10px;
+}
+.task.done{opacity:.6;text-decoration:line-through}
+.actions{
+  display:flex;
+  gap:10px;
+  margin-top:8px;
+}
+.actions button{flex:1}
+.del{background:#e74c3c}
+.doneBtn{background:#2ecc71}
+.top-actions{
+  display:flex;
+  gap:10px;
+  margin-bottom:10px;
+}
+.top-actions button{flex:1}
+body.light{
+  background:linear-gradient(135deg,#f5f7fa,#c3cfe2);
+  color:#000;
+}
+body.light .container{background:rgba(0,0,0,.1)}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h2 id="title">📋 قائمة المهام</h2>
+
+  <div class="top-actions">
+    <button onclick="toggleLang()">🌍 عربي / English</button>
+    <button onclick="toggleTheme()">🌙 / ☀️</button>
+  </div>
+
+  <input id="taskText" placeholder="اكتب المهمة">
+  <input id="taskDate" type="date">
+  <button onclick="addTask()">➕ إضافة</button>
+
+  <div id="tasks"></div>
+</div>
+
+<script>
+let lang = localStorage.getItem("lang") || "ar";
+let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+
+const texts={
+  ar:{
+    title:"📋 قائمة المهام",
+    placeholder:"اكتب المهمة",
+    add:"➕ إضافة",
+    done:"✔ تم",
+    del:"✖ حذف",
+    notify:"⏰ لديك مهمة اليوم"
+  },
+  en:{
+    title:"📋 To-Do List",
+    placeholder:"Write a task",
+    add:"➕ Add",
+    done:"✔ Done",
+    del:"✖ Delete",
+    notify:"⏰ You have a task today"
+  }
+};
+
+function save(){
+  localStorage.setItem("tasks",JSON.stringify(tasks));
+}
+function render(){
+  document.getElementById("tasks").innerHTML="";
+  tasks.forEach((t,i)=>{
+    const div=document.createElement("div");
+    div.className="task"+(t.done?" done":"");
+    div.innerHTML=`
+      <strong>${t.text}</strong><br>
+      📅 ${t.date||"-"}
+      <div class="actions">
+        <button class="doneBtn" onclick="toggleDone(${i})">${texts[lang].done}</button>
+        <button class="del" onclick="delTask(${i})">${texts[lang].del}</button>
+      </div>`;
+    document.getElementById("tasks").appendChild(div);
+  });
+}
+function addTask(){
+  const text=document.getElementById("taskText").value;
+  const date=document.getElementById("taskDate").value;
+  if(!text) return;
+  tasks.push({text, date, done:false});
+  document.getElementById("taskText").value="";
+  save(); render(); checkNotify();
+}
+function delTask(i){tasks.splice(i,1);save();render()}
+function toggleDone(i){tasks[i].done=!tasks[i].done;save();render()}
+
+function toggleTheme(){
+  document.body.classList.toggle("light");
+}
+
+function toggleLang(){
+  lang = lang==="ar"?"en":"ar";
+  localStorage.setItem("lang",lang);
+  applyLang();
+}
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.getElementById("title").innerText=texts[lang].title;
+  document.getElementById("taskText").placeholder=texts[lang].placeholder;
+  document.querySelector("button[onclick='addTask()']").innerText=texts[lang].add;
+  render();
+}
+
+function checkNotify(){
+  if(Notification.permission!=="granted"){
+    Notification.requestPermission();
+  }
+  const today=new Date().toISOString().split("T")[0];
+  tasks.forEach(t=>{
+    if(t.date===today && !t.done){
+      new Notification(texts[lang].notify,{body:t.text});
+    }
+  });
+}
+
+applyLang();
+render();
+checkNotify();
+</script>
+
+</body>
+</html>
