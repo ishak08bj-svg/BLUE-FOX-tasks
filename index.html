@@ -21,18 +21,18 @@ body{
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: 40px 20px;
+  padding: 20px;
   transition: 0.3s;
 }
 
 /* الحاوية الرئيسية */
 .container{
   width: 100%;
-  max-width: 900px;
+  max-width: 500px;
   background: rgba(255,255,255,0.06);
   backdrop-filter: blur(15px);
   border-radius: 25px;
-  padding: 25px;
+  padding: 20px;
   box-shadow: 0 20px 50px rgba(0,0,0,0.5);
   display: flex;
   flex-direction: column;
@@ -43,17 +43,36 @@ body{
 h2{
   text-align: center;
   margin-bottom: 15px;
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: 900;
+}
+
+/* الأزرار العلوية */
+.top-actions{
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  position: sticky;
+  top: 0;
+  background: rgba(0,0,0,0.1);
+  padding: 10px 0;
+  border-radius: 15px;
+  z-index: 10;
+}
+.top-actions button{
+  flex: 1;
+  font-size: 1rem;
+  padding: 12px;
+  border-radius: 12px;
 }
 
 /* الإدخالات */
 input, select{
   width: 100%;
-  padding: 12px 15px;
+  padding: 14px 15px;
   border: none;
   border-radius: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   font-size: 1rem;
   outline: none;
   background: rgba(255,255,255,0.1);
@@ -65,18 +84,12 @@ input:focus, select:focus{
   background: rgba(255,255,255,0.2);
 }
 
-/* أزرار */
-button{
-  width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 15px;
-  font-weight: bold;
-  cursor: pointer;
+/* أزرار الإضافة */
+button.addBtn{
   background: linear-gradient(90deg,#00c6ff,#0072ff);
   color: #fff;
-  font-size: 1rem;
-  transition: 0.3s;
+  font-size: 1.1rem;
+  padding: 14px;
 }
 
 button:hover{
@@ -88,13 +101,14 @@ button:hover{
 .actions{
   display: flex;
   gap: 10px;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .actions button{
   flex: 1;
-  font-size: 0.9rem;
-  padding: 8px;
+  font-size: 0.95rem;
+  padding: 10px;
+  border-radius: 12px;
 }
 
 .del{ background: #e74c3c; }
@@ -106,28 +120,16 @@ button:hover{
 /* المهام */
 .task{
   background: rgba(255,255,255,0.12);
-  border-radius: 15px;
-  padding: 12px;
+  border-radius: 18px;
+  padding: 15px;
   margin-top: 10px;
   transition: 0.3s;
+  font-size: 1rem;
 }
 
 .task.done{
   opacity: 0.6;
   text-decoration: line-through;
-}
-
-/* الأزرار العلوية */
-.top-actions{
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.top-actions button{
-  flex: 1;
-  font-size: 1rem;
-  padding: 10px;
 }
 
 /* الوضع الليلي / النهاري */
@@ -156,10 +158,19 @@ body.light button{
 body.light .del{ background: #e74c3c; }
 body.light .doneBtn{ background: #2ecc71; }
 
-/* متجاوب */
+/* متجاوب للجوال */
 @media(max-width: 600px){
   .container{
     width: 95%;
+    padding: 15px;
+  }
+  input, select, button.addBtn{
+    font-size: 1rem;
+    padding: 12px;
+  }
+  .top-actions button{
+    font-size: 0.95rem;
+    padding: 10px;
   }
 }
 </style>
@@ -177,7 +188,7 @@ body.light .doneBtn{ background: #2ecc71; }
 
   <input id="taskText" placeholder="اكتب المهمة">
   <input id="taskDate" type="datetime-local">
-  <button onclick="addTask()">➕ إضافة</button>
+  <button class="addBtn" onclick="addTask()">➕ إضافة</button>
 
   <div id="tasks"></div>
 </div>
@@ -214,7 +225,7 @@ function render(){
     div.className="task"+(t.done?" done":"");
     div.innerHTML=`
       <strong>${t.text}</strong><br>
-      📅 ${t.date||"-"}
+      📅 ${new Date(t.date).toLocaleString()}
       <div class="actions">
         <button class="doneBtn" onclick="toggleDone(${i})">${texts[lang].done}</button>
         <button class="del" onclick="delTask(${i})">${texts[lang].del}</button>
@@ -253,11 +264,11 @@ function applyLang(){
   document.documentElement.lang=lang;
   document.getElementById("title").innerText=texts[lang].title;
   document.getElementById("taskText").placeholder=texts[lang].placeholder;
-  document.querySelector("button[onclick='addTask()']").innerText=texts[lang].add;
+  document.querySelector(".addBtn").innerText=texts[lang].add;
   render();
 }
 
-// إشعارات الوقت الحقيقي
+// إشعارات الوقت الحقيقي مع صوت
 function checkNotify(){
   if(Notification.permission!=="granted"){ Notification.requestPermission(); }
   const now = new Date();
@@ -266,6 +277,9 @@ function checkNotify(){
       const taskTime = new Date(t.date);
       if(now >= taskTime){
         new Notification(texts[lang].notify, {body: t.text});
+        // صوت إشعار صغير
+        const audio = new Audio('https://www.soundjay.com/buttons/sounds/beep-07.mp3');
+        audio.play();
         t.notified = true;
         save();
       }
