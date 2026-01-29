@@ -176,7 +176,7 @@ body.light .doneBtn{ background: #2ecc71; }
   </div>
 
   <input id="taskText" placeholder="اكتب المهمة">
-  <input id="taskDate" type="date">
+  <input id="taskDate" type="datetime-local">
   <button onclick="addTask()">➕ إضافة</button>
 
   <div id="tasks"></div>
@@ -193,7 +193,7 @@ const texts={
     add:"➕ إضافة",
     done:"✔ تم",
     del:"✖ حذف",
-    notify:"⏰ لديك مهمة اليوم"
+    notify:"⏰ لديك مهمة الآن"
   },
   en:{
     title:"📋 To-Do List",
@@ -201,7 +201,7 @@ const texts={
     add:"➕ Add",
     done:"✔ Done",
     del:"✖ Delete",
-    notify:"⏰ You have a task today"
+    notify:"⏰ You have a task now"
   }
 };
 
@@ -228,25 +228,14 @@ function addTask() {
   const date = document.getElementById("taskDate").value;
   if (!text || !date) return;
 
-  // إنشاء المهمة مع خاصية "notified"
   const task = { text, date, done: false, notified: false };
   tasks.push(task);
 
-  // حفظ المهام وعرضها
   document.getElementById("taskText").value = "";
   document.getElementById("taskDate").value = "";
   save();
   render();
-
-  // تحقق من الإشعار يوم المهمة
-  const today = new Date().toISOString().split("T")[0];
-  if (date === today && Notification.permission === "granted") {
-    new Notification("⏰ لديك مهمة اليوم", { body: text });
-    task.notified = true;
-    save(); // حفظ التغيير
-  }
 }
-
 
 function delTask(i){ tasks.splice(i,1); save(); render(); }
 
@@ -268,21 +257,26 @@ function applyLang(){
   render();
 }
 
+// إشعارات الوقت الحقيقي
 function checkNotify(){
   if(Notification.permission!=="granted"){ Notification.requestPermission(); }
-  const today=new Date().toISOString().split("T")[0];
+  const now = new Date();
   tasks.forEach(t=>{
-    if(t.date===today && !t.done){
-      new Notification(texts[lang].notify,{body:t.text});
+    if(!t.done && !t.notified){
+      const taskTime = new Date(t.date);
+      if(now >= taskTime){
+        new Notification(texts[lang].notify, {body: t.text});
+        t.notified = true;
+        save();
+      }
     }
   });
 }
 
 applyLang();
 render();
-checkNotify();
+setInterval(checkNotify, 1000); // يفحص كل ثانية
 </script>
 
 </body>
 </html>
-
