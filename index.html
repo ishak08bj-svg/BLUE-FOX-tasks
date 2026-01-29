@@ -223,14 +223,30 @@ function render(){
   });
 }
 
-function addTask(){
-  const text=document.getElementById("taskText").value;
-  const date=document.getElementById("taskDate").value;
-  if(!text) return;
-  tasks.push({text, date, done:false});
-  document.getElementById("taskText").value="";
-  save(); render(); checkNotify();
+function addTask() {
+  const text = document.getElementById("taskText").value;
+  const date = document.getElementById("taskDate").value;
+  if (!text || !date) return;
+
+  // إنشاء المهمة مع خاصية "notified"
+  const task = { text, date, done: false, notified: false };
+  tasks.push(task);
+
+  // حفظ المهام وعرضها
+  document.getElementById("taskText").value = "";
+  document.getElementById("taskDate").value = "";
+  save();
+  render();
+
+  // تحقق من الإشعار يوم المهمة
+  const today = new Date().toISOString().split("T")[0];
+  if (date === today && Notification.permission === "granted") {
+    new Notification("⏰ لديك مهمة اليوم", { body: text });
+    task.notified = true;
+    save(); // حفظ التغيير
+  }
 }
+
 
 function delTask(i){ tasks.splice(i,1); save(); render(); }
 
@@ -269,3 +285,4 @@ checkNotify();
 
 </body>
 </html>
+
