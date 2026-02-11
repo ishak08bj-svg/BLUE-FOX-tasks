@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Tasks Pro</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#667eea">
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Segoe UI;}
+body{
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  min-height:100vh;
+  color:#fff;
+  transition:.3s;
+}
+.dark{background:#0f0f1a;}
+
+header{
+  display:flex;
+  justify-content:space-between;
+  padding:20px;
+}
+
+button{
+  border:none;
+  padding:8px 12px;
+  border-radius:10px;
+  cursor:pointer;
+}
+
+.calendar{
+  max-width:400px;
+  margin:20px auto;
+  background:rgba(255,255,255,.15);
+  backdrop-filter:blur(15px);
+  padding:20px;
+  border-radius:20px;
+}
+
+.days{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:6px;
+}
+
+.day{
+  padding:10px;
+  text-align:center;
+  border-radius:10px;
+  cursor:pointer;
+}
+
+.day:hover{background:rgba(255,255,255,.3);}
+.today{background:#ff00cc;}
+.selected{background:#3333ff;}
+
+.tasks{margin-top:20px;}
+.tasks input{
+  width:100%;
+  padding:8px;
+  margin-bottom:8px;
+  border-radius:8px;
+  border:none;
+}
+
+.task-item{
+  display:flex;
+  justify-content:space-between;
+  background:rgba(255,255,255,.2);
+  padding:6px;
+  border-radius:6px;
+  margin-bottom:5px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h2>📅 Smart Tasks</h2>
+  <button onclick="toggleTheme()">🌙</button>
+</header>
+
+<div class="calendar">
+  <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+    <button onclick="prevMonth()">◀</button>
+    <h3 id="monthYear"></h3>
+    <button onclick="nextMonth()">▶</button>
+  </div>
+
+  <div class="days" id="days"></div>
+
+  <div class="tasks">
+    <input type="text" id="taskInput" placeholder="اكتب المهمة...">
+    <input type="time" id="taskTime">
+    <button onclick="addTask()">إضافة</button>
+    <div id="taskList"></div>
+  </div>
+</div>
+
+<script>
+
+// =================
+// Service Worker
+// =================
+if('serviceWorker' in navigator){
+ navigator.serviceWorker.register('sw.js');
+}
+
+// =================
+// إعدادات
+// =================
+const monthYear = document.getElementById("monthYear");
+const daysContainer = document.getElementById("days");
+const taskInput = document.getElementById("taskInput");
+const taskTime = document.getElementById("taskTime");
+const taskList = document.getElementById("taskList");
+
+let date = new Date();
+let selectedDate = null;
+let tasks = JSON.parse(localStorage.getItem("tasks")) || {};
+
+// =================
+// الوضع الليلي
+// =================
+if(localStorage.getItem("theme")==="dark"){
+ document.body.classList.add("dark");
+}
+function toggleTheme(){
+ document.body.classList.toggle("dark");
+ localStorage.setItem("theme",
+  document.body.classList.contains("dark")?"dark":"light");
+}
+
+// =================
+// التقويم
+// =================
+function renderCalendar(){
+ daysContainer.innerHTML="";
+ let year=date.getFullYear();
+ let month=date.getMonth();
+ let firstDay=new Date(year,month,1).getDay();
+ let lastDate=new Date(year,month+1,0).getDate();
+
+ monthYear.innerText=date.toLocaleString("ar",{month:"long",year:"numeric"});
+
+ for(let i=0;i<firstDay;i++){
+  daysContainer.innerHTML+="<div></div>";
+ }
+
+ for(let d=1;d<=lastDate;d++){
+  let dayDiv=document.createElement("div");
+  dayDiv.classList.add("day");
+  dayDiv.innerText=d;
+
+  let key=`${year}-${month+1}-${d}`;
+
+  if(tasks[key]) dayDiv.style.border="2px solid yellow";
+
+  let today=new Date();
+  if(d===today.getDate()&&month===today.getMonth()&&year===today.getFullYear()){
+   dayDiv.classList.add("today");
+  }
+
+  dayDiv.onclick=function(){
+   document.querySelectorAll(".day").forEach(el=>el.classList.remove("selected"));
+   this.classList.add("selected");
+   selectedDate=key;
+   loadTasks();
+  };
+
+  daysContainer.appendChild(dayDiv);
+ }
+}
+
+function prevMonth(){date.setMonth(date.getMonth()-1);renderCalendar();}
+function nextMonth(){date.setMonth(date.getMonth()+1);renderCalendar();}
+
+// =================
+// المهام
+// =================
+function addTask(){
+ if(!selectedDate){alert("اختر يوم");return;}
+ if(taskInput.value===""||taskTime.value===""){alert("اكتب المهمة وحدد الوقت");return;}
+
+ if(!tasks[selectedDate]) tasks[selectedDate]=[];
+
+ let taskObj={
+  text:taskInput.value,
+  time:taskTime.value,
+  notified:false
+ };
+
+ tasks[selectedDate].push(taskObj);
+ localStorage.setItem("tasks",JSON.stringify(tasks));
+ scheduleNotification(taskObj,selectedDate);
+
+ taskInput.value="";
+ taskTime.value="";
+ loadTasks();
+ renderCalendar();
+}
+
+function loadTasks(){
+ taskList.innerHTML="";
+ if(tasks[selectedDate]){
+  tasks[selectedDate].forEach((task,index)=>{
+   let div=document.createElement("div");
+   div.classList.add("task-item");
+   div.innerHTML=`${task.text} - ${task.time}
+   <button onclick="deleteTask(${index})">X</button>`;
+   taskList.appendChild(div);
+  });
+ }
+}
+
+function deleteTask(index){
+ tasks[selectedDate].splice(index,1);
+ localStorage.setItem("tasks",JSON.stringify(tasks));
+ loadTasks();
+ renderCalendar();
+}
+
+// =================
+// الإشعارات
+// =================
+if("Notification" in window){
+ Notification.requestPermission();
+}
+
+function scheduleNotification(taskObj,dateKey){
+ if(Notification.permission!=="granted")return;
+
+ let [year,month,day]=dateKey.split("-");
+ let [hour,minute]=taskObj.time.split(":");
+
+ let target=new Date(year,month-1,day,hour,minute);
+ let now=new Date();
+ let timeout=target-now;
+
+ if(timeout>0){
+  setTimeout(()=>{
+   navigator.serviceWorker.getRegistration().then(reg=>{
+    if(reg){
+     reg.showNotification("🔔 تذكير",{
+      body:taskObj.text,
+      icon:"icon.png"
+     });
+    }
+   });
+  },timeout);
+ }
+}
+
+// =================
+renderCalendar();
+</script>
+
+</body>
+</html>
