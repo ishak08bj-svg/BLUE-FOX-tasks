@@ -1,5 +1,5 @@
 {
-  "name": "Smart Tasks Pro",
+  "name": "BLUE FOX calendar",
   "short_name": "Tasks",
   "start_url": "index.html",
   "display": "standalone",
@@ -13,3 +13,4 @@
     }
   ]
 }
+
